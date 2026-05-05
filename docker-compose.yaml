@@ -20,8 +20,8 @@ services:
       TZ: ${TZ:-America/New_York}
       DATABASE_URL: postgresql://${DB_USER_NAME:-freshrss}:${DB_USER_PASS:-changeme_db_password}@freshrss-db:5432/${DB_CREATE_DATABASE_NAME:-freshrss}
     volumes:
-      - ./rootfs/data/freshrss:/var/www/data
-      - ./rootfs/config/freshrss:/config
+      - ./volumes/data/freshrss:/var/www/data
+      - ./volumes/config/freshrss:/config
     depends_on:
       - freshrss-db
     healthcheck:
@@ -43,7 +43,7 @@ services:
       POSTGRES_USER: ${DB_USER_NAME:-freshrss}
       POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
     volumes:
-      - ./rootfs/data/db/postgres/freshrss:/var/lib/postgresql/data
+      - ./volumes/data/db/postgres/freshrss:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 30s
