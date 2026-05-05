@@ -51,9 +51,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/freshrss` - Data storage
-- `./rootfs/config/freshrss` - Data storage
-- `./rootfs/data/db/postgres/freshrss` - Data storage
+- `./volumes/data/freshrss` - Data storage
+- `./volumes/config/freshrss` - Data storage
+- `./volumes/data/db/postgres/freshrss` - Data storage
 
 ## 🔐 Security
 
