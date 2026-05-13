@@ -16,6 +16,8 @@ services:
     logging: *default-logging
     networks:
       - freshrss
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8085:80"
     environment:
@@ -37,12 +39,30 @@ services:
         --email ${EMAIL_SERVER_MAIL_FROM:-admin@example.com}
         --password ${APP_ADMIN_PASS:-changeme_admin_password}
         --user ${APP_ADMIN_USER:-admin}
+      CONTAINER_NAME: freshrss-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/data/freshrss:/var/www/FreshRSS/data
       - ./volumes/extensions/freshrss:/var/www/FreshRSS/extensions
     depends_on:
       freshrss-db:
         condition: service_healthy
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://freshrss-app:80'
+      - 'cloudflare.hostname=freshrss.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.freshrss-app.entrypoints=http'
+      - 'traefik.http.routers.freshrss-app-secure.tls=true'
+      - 'traefik.http.routers.freshrss-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.freshrss-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.freshrss-app.middlewares=freshrss-app-https-redirect'
+      - 'traefik.http.routers.freshrss-app-secure.entrypoints=https'
+      - 'traefik.http.routers.freshrss-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.freshrss-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.freshrss-app-secure.service=freshrss-app'
+      - 'traefik.http.services.freshrss-app.loadbalancer.server.port=80'
 
   freshrss-db:
     image: postgres:latest
@@ -57,6 +77,7 @@ services:
       POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-freshrss}
       POSTGRES_USER: ${DB_USER_NAME:-freshrss}
       POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      CONTAINER_NAME: freshrss-db
     volumes:
       - ./volumes/data/db/postgres/freshrss:/var/lib/postgresql/data
     healthcheck:
@@ -69,3 +90,7 @@ networks:
   freshrss:
     name: freshrss
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
