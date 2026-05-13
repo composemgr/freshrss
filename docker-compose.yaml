@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8085
 
+name: freshrss
 x-logging: &default-logging
   driver: json-file
   options:
@@ -7,33 +8,47 @@ x-logging: &default-logging
     max-file: "1"
 
 services:
-  freshrss:
+  app:
     image: freshrss/freshrss:latest
+    pull_policy: always
     container_name: freshrss-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - freshrss
     ports:
-      - "8085:8085"
+      - "172.17.0.1:8085:80"
     environment:
       TZ: ${TZ:-America/New_York}
-      DATABASE_URL: postgresql://${DB_USER_NAME:-freshrss}:${DB_USER_PASS:-changeme_db_password}@freshrss-db:5432/${DB_CREATE_DATABASE_NAME:-freshrss}
+      CRON_MIN: "2,32"
+      FRESHRSS_ENV: production
+      FRESHRSS_INSTALL: >-
+        --api-enabled
+        --base-url http://${BASE_HOST_NAME:-$HOSTNAME}
+        --db-base ${DB_CREATE_DATABASE_NAME:-freshrss}
+        --db-host freshrss-db
+        --db-password ${DB_USER_PASS:-changeme_db_password}
+        --db-type pgsql
+        --db-user ${DB_USER_NAME:-freshrss}
+        --default-user ${APP_ADMIN_USER:-admin}
+        --language en
+      FRESHRSS_USER: >-
+        --api-password ${APP_ADMIN_PASS:-changeme_admin_password}
+        --email ${EMAIL_SERVER_MAIL_FROM:-admin@example.com}
+        --password ${APP_ADMIN_PASS:-changeme_admin_password}
+        --user ${APP_ADMIN_USER:-admin}
     volumes:
-      - ./volumes/data/freshrss:/var/www/data
-      - ./volumes/config/freshrss:/config
+      - ./volumes/data/freshrss:/var/www/FreshRSS/data
+      - ./volumes/extensions/freshrss:/var/www/FreshRSS/extensions
     depends_on:
-      - freshrss-db
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      freshrss-db:
+        condition: service_healthy
 
   freshrss-db:
-    image: postgres:16-alpine
+    image: postgres:latest
+    pull_policy: always
     container_name: freshrss-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - freshrss
@@ -45,11 +60,12 @@ services:
     volumes:
       - ./volumes/data/db/postgres/freshrss:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER_NAME:-freshrss} -d ${DB_CREATE_DATABASE_NAME:-freshrss}"]
       interval: 30s
       timeout: 10s
       retries: 3
 
 networks:
   freshrss:
+    name: freshrss
     external: false
