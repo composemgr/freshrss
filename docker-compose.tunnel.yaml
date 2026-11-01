@@ -1,0 +1,81 @@
+name: freshrss
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: freshrss/freshrss:latest
+    container_name: freshrss-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: freshrss-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      CRON_MIN: '2,32'
+      FRESHRSS_ENV: production
+      FRESHRSS_INSTALL: >-
+        --api-enabled
+        --base-url http://${BASE_HOST_NAME:-$HOSTNAME}:64180
+        --db-base ${DB_CREATE_DATABASE_NAME:-freshrss}
+        --db-host freshrss-db
+        --db-password ${DB_USER_PASS:-replace-with-a-random-password}
+        --db-type pgsql
+        --db-user ${DB_USER_NAME:-freshrss}
+        --default-user ${APP_ADMIN_USER:-admin}
+        --language en
+      FRESHRSS_USER: >-
+        --api-password ${APP_ADMIN_PASS:-replace-with-a-random-password}
+        --email ${EMAIL_SERVER_MAIL_FROM:-admin@example.com}
+        --password ${APP_ADMIN_PASS:-replace-with-a-random-password}
+        --user ${APP_ADMIN_USER:-admin}
+    volumes:
+      - './volumes/data/freshrss:/var/www/FreshRSS/data'
+      - './volumes/extensions/freshrss:/var/www/FreshRSS/extensions'
+    depends_on:
+      freshrss-db:
+        condition: service_healthy
+    labels:
+      - 'cloudflare.enable=true'
+      - 'cloudflare.service=http://freshrss-app:80'
+      - 'cloudflare.hostname=${BASE_HOST_NAME:-$HOSTNAME}'
+    networks:
+      - freshrss
+      - cloudflare
+
+  freshrss-db:
+    image: postgres:latest
+    container_name: freshrss-db
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: freshrss-db
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-freshrss}
+      POSTGRES_USER: ${DB_USER_NAME:-freshrss}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+      CONTAINER_NAME: freshrss-db
+    volumes:
+      - './volumes/db/postgres/freshrss:/var/lib/postgresql/data:z'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - freshrss
+
+networks:
+  freshrss:
+    name: freshrss
+    external: false
+  cloudflare:
+    external: true

@@ -1,19 +1,18 @@
 ## 👋 Welcome to freshrss 🚀
 
-Self-hosted RSS feed aggregator
+A free, self-hostable news aggregator
 
 ## 📋 Description
 
-Self-hosted RSS feed aggregator
+A free, self-hostable news aggregator
 
 ## 🚀 Services
 
-- **freshrss**: freshrss/freshrss:latest
+- **app**: freshrss/freshrss:latest
 
 ### Infrastructure Components
 
 - **freshrss-db**: Postgres database
-
 
 ## 📦 Installation
 
@@ -26,7 +25,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/freshrss/main/docker
 ```bash
 git clone "https://github.com/composemgr/freshrss" ~/.local/srv/docker/freshrss
 cd ~/.local/srv/docker/freshrss
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -40,25 +40,61 @@ composemgr install freshrss
 
 ```shell
 TZ=America/New_York
-DB_USER_NAME=freshrss
+BASE_HOST_NAME=freshrss.example.com
+APP_ADMIN_USER=admin
+APP_ADMIN_PASS=replace-with-a-random-password
+DB_USER_PASS=replace-with-a-random-password
 ```
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64180` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:8085
+- **Web Interface**: http://172.17.0.1:64180
 
 ## 📂 Volumes
 
-- `./volumes/data/freshrss` - Data storage
-- `./volumes/config/freshrss` - Data storage
-- `./volumes/data/db/postgres/freshrss` - Data storage
+- `./volumes/data/freshrss` - FreshRSS data and configuration
+- `./volumes/extensions/freshrss` - FreshRSS extensions
+- `./volumes/db/postgres/freshrss` - Database data
 
 ## 🔐 Security
 
 - Change all default passwords before deploying to production
-- Use strong secrets for all authentication tokens
+- FreshRSS uses the admin password as the API token, so rotate it if leaked
 - Configure HTTPS using a reverse proxy (nginx, traefik, caddy)
 - Regularly update Docker images for security patches
 - Backup your data regularly
@@ -66,26 +102,26 @@ See `docker-compose.yaml` for complete list of configurable options.
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f freshrss
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements
