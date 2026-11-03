@@ -35,6 +35,12 @@ services:
         --email ${EMAIL_SERVER_MAIL_FROM:-admin@example.com}
         --password ${APP_ADMIN_PASS:-replace-with-a-random-password}
         --user ${APP_ADMIN_USER:-admin}
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/80']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - './volumes/data/freshrss:/var/www/FreshRSS/data'
       - './volumes/extensions/freshrss:/var/www/FreshRSS/extensions'
